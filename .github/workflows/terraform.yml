@@ -1,0 +1,89 @@
+
+name: Terraform AWS VPC and EC2 Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  terraform:
+    name: Terraform CI/CD
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      # 1. Checkout GitHub repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. Configure AWS credentials using GitHub OIDC
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::466210119847:role/vpc-main
+          aws-region: ap-south-1
+          audience: sts.amazonaws.com
+
+      # 3. Verify AWS identity
+      - name: Verify AWS Identity
+        run: |
+          aws sts get-caller-identity
+
+      # 4. Install Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      # 5. Initialize Terraform
+      - name: Terraform Init
+        run: terraform init
+
+      # 6. Check Terraform formatting
+      - name: Terraform Format
+        run: terraform fmt -check -recursive
+
+      # 7. Validate Terraform configuration
+      - name: Terraform Validate
+        run: terraform validate
+
+      # 8. Debug GitHub OIDC claims
+      - name: Debug GitHub OIDC Claims
+        run: |
+          set -euo pipefail
+
+          RESPONSE=$(curl -fsS \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com")
+
+          TOKEN=$(echo "$RESPONSE" | jq -er '.value')
+
+          PAYLOAD=$(echo "$TOKEN" | cut -d '.' -f 2 | tr '_-' '/+')
+
+          PAYLOAD=$(printf '%s' "$PAYLOAD" | awk '{
+            while (length($0) % 4) $0 = $0 "="
+            print
+          }')
+
+          printf '%s' "$PAYLOAD" | base64 -d | jq '{iss, sub, aud}'
+
+      # 9. Terraform Plan
+      - name: Terraform Plan
+        run: terraform plan -no-color -out=tfplan
+
+      # 10. Terraform Apply (only on push to main)
+    
