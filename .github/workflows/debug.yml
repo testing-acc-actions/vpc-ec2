@@ -1,29 +1,19 @@
-
 name: Debug OIDC
-
+ 
 on:
   workflow_dispatch:
-
+ 
 permissions:
   id-token: write
   contents: read
-
+ 
 jobs:
   debug:
     runs-on: ubuntu-latest
     steps:
-    - name: Debug GitHub OIDC Claims
-      shell: bash
-      run: |
-       set -euo pipefail
-
-       RESPONSE=$(curl -fsS \
-        -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-       "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com")
-
-       TOKEN=$(echo "$RESPONSE" | jq -er '.value')
-
-       PAYLOAD=$(echo "$TOKEN" | cut -d '.' -f 2 | tr '_-' '/+')
-       PAYLOAD=$(printf '%s' "$PAYLOAD" | awk '{ while (length($0) % 4) $0 = $0 "="; print }')
-
-       printf '%s' "$PAYLOAD" | base64 -d | jq '{iss, sub, aud}'
+      - name: Show token claims
+        run: |
+          TOKEN=$(curl -sH "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r .value)
+          echo "$TOKEN" | cut -d. -f2 | tr '_-' '/+' \
+            | awk '{while(length($0)%4)$0=$0"=";print}' | base64 -d | jq '{iss,sub,aud}'
