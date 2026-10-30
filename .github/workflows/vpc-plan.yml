@@ -1,1 +1,42 @@
+name: Terraform CI
+
+on:
+  workflow_dispatch: 
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  validate:
+    name: Format and validate Terraform
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: config AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+           role-to-assume: arn:aws:iam::466210119847:role/vpc-main
+           aws-region : ap-south-1
+           
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.12.2"
+
+      - name: Check Terraform formatting
+        run: terraform fmt
+
+      - name: Initialize Terraform without a backend
+        run: terraform init
+
+      - name: Validate Terraform configuration
+        run: terraform validate
+        
+      - name: Generate saved Terraform plan
+        run: terraform plan -input=false -no-color -out=tfplan
+
+      - name: Create readable plan report
+        run: terraform show -no-color tfplan > tfplan.txt
 
