@@ -15,7 +15,7 @@ I also configured an S3 bucket to store Terraform state remotely.
 
 ## Architecture
 
-<img width="2332" height="1376" alt="image" src="https://github.com/user-attachments/assets/2a7a675d-10df-4bc8-a8dd-0ed28165f942" />
+<img width="2332" height="1000" alt="image" src="https://github.com/user-attachments/assets/2a7a675d-10df-4bc8-a8dd-0ed28165f942" />
 
 
 ```mermaid
