@@ -43,3 +43,6 @@ jobs:
       - name: Create readable plan report
         run: terraform show -no-color tfplan > tfplan.txt
 
+      - name: create the resources
+        run: terraform apply 
+
