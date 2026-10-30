@@ -1,76 +1,68 @@
-<img width="2332" height="1376" alt="image" src="https://github.com/user-attachments/assets/21f9262d-749b-4d3e-a5c3-f70b689b8ed2" />
-# Terraform AWS VPC and EC2 Infrastructure
 
-A hands-on Infrastructure as Code (IaC) project that provisions AWS networking and compute resources using Terraform.
+# Terraform AWS VPC and EC2 Project
 
-The project demonstrates how to build an AWS VPC, configure public and private subnets, establish internet connectivity, deploy an EC2 web server, and manage infrastructure through Terraform.
+In this project, I used Terraform to create AWS infrastructure from scratch. The main goal was to understand how AWS networking works, how to deploy an EC2 instance inside a VPC, and how to manage AWS resources using Infrastructure as Code.
 
-## Project Objectives
+I also worked with Git and GitHub to manage the project and explored GitHub Actions for automating Terraform workflows.
 
-- Understand Infrastructure as Code using Terraform.
-- Create and configure an AWS VPC.
-- Build public and private subnets.
-- Configure Internet Gateway and route tables.
-- Deploy an EC2 instance running Amazon Linux 2023.
-- Configure Security Groups to control network traffic.
-- Host a basic Apache web server on EC2.
-- Store Terraform state remotely using Amazon S3.
-- Practice Git version control and infrastructure automation.
-- Learn secure AWS authentication and GitHub Actions OIDC integration.
+## What I Built
 
-## Architecture Diagram!
-[Uploading image.png…]()
+I created an AWS VPC with public and private subnets, configured internet connectivity, and deployed an EC2 instance in the public subnet.
 
+The EC2 instance runs Amazon Linux 2023. Using a startup script (User Data), I installed Apache and hosted a simple web page.
+
+I also configured an S3 bucket to store Terraform state remotely.
+
+## Architecture
+
+<img width="2332" height="1376" alt="image" src="https://github.com/user-attachments/assets/2a7a675d-10df-4bc8-a8dd-0ed28165f942" />
 
 
 ```mermaid
 flowchart TB
-    User["Internet User"]
-    Admin["Administrator"]
+    Internet["Internet"]
+    IGW["Internet Gateway"]
 
-    subgraph AWS["AWS Cloud - ap-south-1"]
+    subgraph AWS["AWS Cloud - Mumbai (ap-south-1)"]
         subgraph VPC["VPC - 10.10.0.0/16"]
-            IGW["Internet Gateway"]
-
             subgraph Public["Public Subnet - 10.10.1.0/24"]
-                RT["Public Route Table<br/>0.0.0.0/0 → IGW"]
-                SG["Security Group<br/>HTTP: 80<br/>SSH: 22 (Restricted IP)"]
-                EC2["EC2 Instance<br/>Amazon Linux 2023<br/>Apache Web Server"]
+                RT["Public Route Table"]
+                SG["Security Group"]
+                EC2["EC2 - Amazon Linux 2023"]
+                Apache["Apache Web Server"]
             end
 
             subgraph Private["Private Subnet - 10.10.2.0/24"]
-                PrivateResources["Reserved for<br/>Future Private Workloads"]
+                Future["Reserved for future workloads"]
             end
         end
 
-        S3["S3 Remote Terraform State<br/>tfstate-vpc-ec"]
+        S3["S3 - Terraform Remote State"]
     end
 
-    User --> IGW
+    Internet --> IGW
     IGW --> RT
     RT --> EC2
-    SG -. "Controls traffic" .-> EC2
-    Admin -. "Restricted SSH access" .-> EC2
-    EC2 --> Web["HTTP Website<br/>Hello from Terraform-managed EC2!"]
-
-    Terraform["Terraform"] --> AWS
+    SG --> EC2
+    EC2 --> Apache
+    Terraform["Terraform"] --> VPC
     Terraform --> S3
 ```
 
-## AWS Resources Created
+## AWS Resources
 
-| AWS Service | Configuration | Purpose |
-|---|---|---|
-| Amazon VPC | 10.10.0.0/16 | Isolated network |
-| Public Subnet | 10.10.1.0/24 | Hosts EC2 instance |
-| Private Subnet | 10.10.2.0/24 | Reserved for private workloads |
-| Internet Gateway | Attached to VPC | Internet connectivity |
-| Route Table | 0.0.0.0/0 via IGW | Public internet routing |
-| Security Group | HTTP 80, SSH 22 restricted | Network traffic control |
-| EC2 | t3.micro | Web server |
-| Amazon Linux 2023 | EC2 operating system | Server operating system |
-| Apache HTTP Server | Port 80 | Serves website |
-| Amazon S3 | Remote state bucket | Terraform state storage |
+| Resource | Configuration |
+|---|---|
+| VPC | 10.10.0.0/16 |
+| Public Subnet | 10.10.1.0/24 |
+| Private Subnet | 10.10.2.0/24 |
+| Availability Zone | ap-south-1a |
+| Internet Gateway | Attached to VPC |
+| Route Table | Default route to Internet Gateway |
+| EC2 Instance | t3.micro |
+| Operating System | Amazon Linux 2023 |
+| Web Server | Apache |
+| Remote State | Amazon S3 |
 
 ## Project Structure
 
@@ -91,234 +83,115 @@ vpc-ec2/
 └── README.md
 ```
 
-### Terraform File Explanation
+### Terraform Files
 
-| File | Description |
-|---|---|
-| backend.tf | Configures remote Terraform state in S3 |
-| versions.tf | Defines Terraform and AWS provider requirements |
-| network.tf | Creates VPC and subnets |
-| routing.tf | Configures Internet Gateway and routing |
-| security.tf | Defines EC2 security group rules |
-| ec2.tf | Provisions EC2 instance and Apache web server |
-| terraform.yml | GitHub Actions workflow |
+- `backend.tf` – Configures the S3 backend for remote state management.
+- `versions.tf` – Defines Terraform and AWS provider versions.
+- `network.tf` – Creates the VPC and subnets.
+- `routing.tf` – Configures the Internet Gateway and route table.
+- `security.tf` – Defines security group rules.
+- `ec2.tf` – Creates the EC2 instance and installs Apache.
 
-## Infrastructure Configuration
+## Security Configuration
 
-### 1. VPC
+I configured the EC2 security group with the following inbound rules:
 
-- CIDR: `10.10.0.0/16`
-- Region: `ap-south-1`
-- Provides an isolated AWS network.
-
-### 2. Subnets
-
-**Public Subnet**
-- CIDR: `10.10.1.0/24`
-- Availability Zone: `ap-south-1a`
-- Hosts the EC2 web server.
-- Routes internet traffic through the Internet Gateway.
-
-**Private Subnet**
-- CIDR: `10.10.2.0/24`
-- Availability Zone: `ap-south-1a`
-- Reserved for future internal workloads.
-- No NAT Gateway is configured.
-
-### 3. Security Group
-
-Inbound rules:
-
-| Protocol | Port | Source | Purpose |
+| Port | Protocol | Source | Purpose |
 |---|---|---|---|
-| TCP | 80 | 0.0.0.0/0 | HTTP website access |
-| TCP | 22 | Administrator public IP /32 | Restricted SSH access |
+| 80 | TCP | 0.0.0.0/0 | Access the website |
+| 22 | TCP | My public IP (/32) | SSH access |
 
-Outbound traffic is configured to allow IPv4 traffic.
+SSH access is restricted to a specific public IP instead of allowing access from anywhere.
 
-### 4. EC2 Instance
+The Terraform state is stored in a private S3 bucket with encryption enabled and public access blocked.
 
-- Instance type: `t3.micro`
-- AMI: Amazon Linux 2023
-- Web server: Apache HTTP Server
-- User Data: Installs Apache and creates the website's index page.
+## Terraform Commands
 
-Sample website content:
+These are the commands I used while working on the project.
 
-```html
-<h1>Hello from Terraform-managed EC2!</h1>
-```
-
-The website is accessible through the EC2 public IP using HTTP.
-
-## Terraform Remote State
-
-Terraform state is stored remotely in Amazon S3.
-
-| Configuration | Value |
-|---|---|
-| Bucket | tfstate-vpc-ec |
-| Region | ap-south-1 |
-| State key | vpc-ec2-project/terraform.tfstate |
-| Encryption | Enabled |
-| State locking | S3 native lockfile |
-
-The state bucket has public access blocked and encryption enabled.
-
-## Tools and Technologies
-
-- AWS
-- Terraform
-- Amazon VPC
-- Amazon EC2
-- Amazon S3
-- IAM
-- Git and GitHub
-- GitHub Actions
-- AWS IAM OIDC
-- Windows PowerShell
-- Visual Studio Code
-
-## Deployment Steps
-
-### Step 1: Clone the repository
-
-```bash
-git clone https://github.com/testing-acc-actions/vpc-ec2.git
-cd vpc-ec2
-```
-
-### Step 2: Authenticate with AWS locally
-
-```powershell
-aws sso login --profile terraform-vpc-ec2
-```
-
-### Step 3: Initialize Terraform
+**Initialize Terraform**
 
 ```bash
 terraform init
 ```
 
-### Step 4: Format Terraform files
+**Format Terraform files**
 
 ```bash
-terraform fmt -recursive
+terraform fmt
 ```
 
-### Step 5: Validate configuration
+**Validate the configuration**
 
 ```bash
 terraform validate
 ```
 
-### Step 6: Review infrastructure changes
+**Check the infrastructure changes**
 
 ```bash
 terraform plan
 ```
 
-### Step 7: Deploy infrastructure
+**Deploy AWS resources**
 
 ```bash
 terraform apply
 ```
 
-Review the plan and type `yes` when ready to deploy.
+## GitHub Actions
 
-## GitHub Actions CI/CD
+I also worked on integrating GitHub Actions with AWS to automate Terraform workflows.
 
-GitHub Actions is used to automate Terraform workflows.
+The intended pipeline includes:
 
-The intended workflow includes:
-
-1. Checkout source code.
-2. Authenticate to AWS using OIDC.
+1. Checkout the repository.
+2. Authenticate with AWS using GitHub OIDC.
 3. Initialize Terraform.
 4. Check Terraform formatting.
-5. Validate Terraform configuration.
-6. Generate Terraform execution plan.
-7. Apply approved infrastructure changes.
+5. Validate the configuration.
+6. Generate an infrastructure plan.
+7. Apply infrastructure changes after the required checks and approval.
 
-### Authentication Architecture
+Using OIDC avoids storing long-term AWS access keys in GitHub Secrets.
 
-```mermaid
-flowchart LR
-    Developer["Developer"]
-    GitHub["GitHub Repository"]
-    Actions["GitHub Actions"]
-    OIDC["GitHub OIDC Provider"]
-    IAM["AWS IAM Role"]
-    AWS["AWS Infrastructure"]
-    S3["S3 Remote State"]
+## What I Learned
 
-    Developer --> GitHub
-    GitHub --> Actions
-    Actions --> OIDC
-    OIDC --> IAM
-    IAM --> AWS
-    IAM --> S3
-```
+While working on this project, I got hands-on experience with:
 
-OIDC allows GitHub Actions to obtain temporary AWS credentials without storing long-term AWS access keys in GitHub secrets.
-
-The AWS IAM trust policy should restrict access to the intended repository and branch.
-
-## Security Best Practices
-
-- Use IAM least-privilege permissions.
-- Use GitHub OIDC instead of long-term AWS access keys.
-- Restrict SSH access to a trusted public IP.
-- Keep S3 Block Public Access enabled for the Terraform state bucket.
-- Enable encryption for remote Terraform state.
-- Never commit Terraform state files or AWS credentials.
-- Use `.gitignore` to exclude sensitive files.
-- Review Terraform plans before applying infrastructure changes.
+- Creating AWS VPCs and subnets using Terraform.
+- Understanding public and private subnet configurations.
+- Configuring Internet Gateways and route tables.
+- Deploying EC2 instances.
+- Installing and configuring Apache using User Data.
+- Managing Terraform state remotely using S3.
+- Configuring AWS security groups.
+- Using Git and GitHub for version control.
+- Learning how GitHub Actions can automate Terraform deployments.
+- Understanding AWS IAM roles and OIDC authentication.
 
 ## Future Improvements
 
-- Add Application Load Balancer.
-- Configure HTTPS using AWS Certificate Manager.
-- Deploy application workloads into private subnets.
-- Introduce NAT Gateway only when required.
-- Add CloudWatch monitoring and logging.
-- Integrate Terraform plan approval into GitHub Actions.
-- Implement separate development and production environments.
-- Introduce reusable Terraform modules.
+I would like to extend this project by adding:
+
+- Application Load Balancer.
+- HTTPS using AWS Certificate Manager.
+- NAT Gateway for private subnet connectivity, when needed.
+- CloudWatch monitoring and logging.
+- Separate development and production environments.
+- Terraform modules for reusable infrastructure.
 
 ## Cleanup
 
-To remove resources managed by this Terraform project:
+To remove the infrastructure created by Terraform:
 
 ```bash
 terraform plan -destroy
 terraform destroy
 ```
 
-Review the destruction plan carefully before confirming.
-
-**Important:** The S3 remote state bucket is separate infrastructure. Do not delete it as part of routine cleanup while the Terraform state is still needed.
-
-## Learning Outcomes
-
-Through this project, I gained practical experience with:
-
-- AWS networking and VPC architecture.
-- Public and private subnet design.
-- Internet Gateway and route table configuration.
-- EC2 provisioning using Terraform.
-- Security Group configuration.
-- Apache web server deployment using EC2 User Data.
-- Terraform remote state management using S3.
-- Git and GitHub version control.
-- GitHub Actions and AWS OIDC authentication.
+Review the destruction plan before confirming. The S3 remote state bucket is managed separately and should be retained until the Terraform state is no longer needed.
 
 ---
 
-**Project:** Terraform AWS VPC and EC2 Infrastructure
-
-**Cloud Provider:** Amazon Web Services
-
-**Infrastructure as Code:** Terraform
-
-**Automation:** GitHub Actions
+**Tools Used:** AWS | Terraform | Git | GitHub | GitHub Actions | AWS IAM | PowerShell
