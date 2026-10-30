@@ -1,0 +1,55 @@
+name: Terraform Bootstrap (backend bucket)
+ 
+# Run manually only. Creates the state bucket. Run once.
+
+on:
+
+  workflow_dispatch:
+ 
+permissions:
+
+  id-token: write   # required for AWS OIDC
+
+  contents: read
+ 
+jobs:
+
+  bootstrap:
+
+    runs-on: ubuntu-latest
+
+    defaults:
+
+      run:
+
+        working-directory: terraform
+
+    steps:
+
+      - uses: actions/checkout@v4
+ 
+      - uses: aws-actions/configure-aws-credentials@v4
+
+        with:
+
+          role-to-assume: arn:aws:iam::466210119847:role/vpc-main
+          aws-region: ap-south-1
+ 
+      - uses: hashicorp/setup-terraform@v3
+ 
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.12.2"
+
+      - name: Check Terraform formatting
+        run: terraform fmt
+
+      - name: Initialize Terraform without a backend
+        run: terraform init
+
+      - name: Validate Terraform configuration
+        run: terraform validate
+        
+      - name: plan terraform configuration
+        run: terraform plan
